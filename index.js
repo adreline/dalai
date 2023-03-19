@@ -1,6 +1,5 @@
 const os = require('os');
 const pty = require('node-pty');
-//const pty = require('@cdktf/node-pty-prebuilt-multiarch');
 const git = require('isomorphic-git');
 const http = require('isomorphic-git/http/node');
 const Http = require("http")
@@ -13,7 +12,6 @@ const { io } = require("socket.io-client");
 const term = require( 'terminal-kit' ).terminal;
 const Downloader = require("nodejs-file-downloader");
 const semver = require('semver');
-//const _7z = require('7zip-min');
 const axios = require('axios')
 const platform = os.platform()
 const shell = platform === 'win32' ? 'powershell.exe' : 'bash';
@@ -114,34 +112,6 @@ class Dalai {
     console.log("cleaning up temp files")
     await fs.promises.rm(path.resolve(this.home, filename))
   }
-//  async mingw() {
-//    const mingw = "https://github.com/niXman/mingw-builds-binaries/releases/download/12.2.0-rt_v10-rev2/x86_64-12.2.0-release-win32-seh-msvcrt-rt_v10-rev2.7z"
-//    const downloader = new Downloader({
-//      url: mingw,
-//      directory: this.home,
-//      onProgress: (percentage, chunk, remainingSize) => {
-//        this.progress("download mingw", percentage)
-//      },
-//    });
-//    try {
-//      await this.startProgress("download mingw")
-//      await downloader.download();
-//    } catch (error) {
-//      console.log(error);
-//    }
-//    this.progressBar.update(1);
-//    await new Promise((resolve, reject) => {
-//      _7z.unpack(path.resolve(this.home, "x86_64-12.2.0-release-win32-seh-msvcrt-rt_v10-rev2.7z"), this.home, (err) => {
-//        if (err) { 
-//          reject(err)
-//        } else {
-//          resolve()
-//        }
-//      })
-//    })
-//    console.log("cleaning up temp files")
-//    await fs.promises.rm(path.resolve(this.home, "x86_64-12.2.0-release-win32-seh-msvcrt-rt_v10-rev2.7z"))
-//  }
   async query(req, cb) {
     
     console.log(`> query:`, req)
@@ -220,11 +190,7 @@ class Dalai {
     // first install
     let engine = this.cores[core]
     let e = await exists(path.resolve(engine.home));
-//    if (e) {
-//      // already exists, no need to install
-//    } else {
       await this.add(core)
-//    }
 
     // next add the models
     let res = await this.cores[core].add(...models)
@@ -309,39 +275,8 @@ class Dalai {
     *   - torch, numpy, etc.
     *
     **************************************************************************************************************/
-
-    // 3.1. Python: Windows doesn't ship with python, so install a dedicated self-contained python
-    if (platform === "win32") {
-      await this.python() 
-    }
     const root_python_paths = (platform === "win32" ? ["python3", "python", path.resolve(this.home, "python", "python.exe")] : ["python3", "python"])
     const root_pip_paths = (platform === "win32" ? ["pip3", "pip", path.resolve(this.home, "python", "python -m pip")] : ["pip3", "pip"])
-
-    // 3.2. Build tools
-    if (platform === "linux") {
-      // ubuntu debian
-      success = await this.exec("apt-get install build-essential python3-venv -y")
-      if (!success) {
-        // fefdora
-        success = await this.exec("dnf install make automake gcc gcc-c++ kernel-devel python3-virtualenv -y")
-      }
-    } else {
-      // for win32 / darwin
-      for(let root_pip_path of root_pip_paths) {
-        success = await this.exec(`${root_pip_path} install --user virtualenv`)
-        if (success) {
-          break;
-        }
-        success = await this.exec(`${root_pip_path} install virtualenv`)
-        if (success) {
-          break;
-        }
-      }
-      if (!success) {
-        throw new Error("cannot install virtualenv")
-      }
-
-    }
 
     // 3.3. virtualenv
     const venv_path = path.join(this.home, "venv")
@@ -351,33 +286,7 @@ class Dalai {
     }
     if (!success) {
       throw new Error("cannot execute python3 or python")
-      return
     }
-
-    // 3.4. Python libraries
-    const pip_path = platform === "win32" ? path.join(venv_path, "Scripts", "pip.exe") : path.join(venv_path, "bin", "pip")
-    const python_path = platform == "win32" ? path.join(venv_path, "Scripts", "python.exe") : path.join(venv_path, 'bin', 'python')
-    // cmake (only on windows. the rest platforms use make)
-    if (platform === "win32") {
-      success = await this.exec(`${pip_path} install cmake`)
-      if (!success) {
-        throw new Error("cmake installation failed")
-        return
-      }
-    }
-    success = await this.exec(`${pip_path} install --upgrade pip setuptools wheel`)
-    if (!success) {
-      throw new Error("pip setuptools wheel upgrade failed")
-      return
-    }
-    success = await this.exec(`${pip_path} install torch torchvision torchaudio sentencepiece numpy`)
-    //success = await this.exec(`${pip_path} install torch torchvision torchaudio sentencepiece numpy wget`)
-    if (!success) {
-      throw new Error("dependency installation failed")
-      return
-    }
-
-
   }
   serve(port, options) {
     const httpServer = createServer();
@@ -452,11 +361,6 @@ class Dalai {
   }
   progress(task, percent) {
     this.progressBar.update(percent/100);
-    //if (percent >= 100) {
-    //  setTimeout(() => {
-    //    term("\n")
-    //  }, 200)
-    //}
   }
   startProgress(title) {
     this.progressBar = term.progressBar({
